@@ -54,7 +54,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
         # The webserver can return index.html from directories (paths that end in /)    
         if path.endswith("/"):
             path += "index.html"
-            print("+index path"+path)
+            #print("+index path"+path)
         
         final_path = MyWebServer.ROOT+path
         
