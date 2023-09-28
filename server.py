@@ -1,7 +1,7 @@
 #  coding: utf-8 
 import socketserver
 
-# Copyright 2013 Abram Hindle, Eddie Antonio Santos
+# Copyright 2023 Zhi Liu
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,11 +28,59 @@ import socketserver
 
 
 class MyWebServer(socketserver.BaseRequestHandler):
+    ROOT = './www'
     
     def handle(self):
-        self.data = self.request.recv(1024).strip()
-        print ("Got a request of: %s\n" % self.data)
-        self.request.sendall(bytearray("OK",'utf-8'))
+        self.data = self.request.recv(1024).decode('utf-8')
+        print("Got a request of:", self.data)
+        
+        if not self.data.startswith("GET "):
+            self.send_response(405, "Method Not Allowed")
+            return
+        
+        #rq =  self.data.splitlines()[0]
+        #print(self.data)
+        rq = self.data.split(' ')
+        path = rq[1]
+        #print(rq)
+        #print("the path is"+path)
+        
+        #301 redirect
+        if not path.endswith(".html") and not path.endswith(".css") and not path.endswith("/"):
+            path += "/"
+            self.send_redirect(path)
+            return            
+
+        # The webserver can return index.html from directories (paths that end in /)    
+        if path.endswith("/"):
+            path += "index.html"
+            print("+index path"+path)
+        
+        final_path = MyWebServer.ROOT+path
+        
+        try:
+            f = open(final_path,"rb")
+        except:
+            self.send_response(404, "Not Found")
+        else:
+            if path.endswith(".html"):
+                self.send_response(200, "OK", "text/html", f.read())
+            elif path.endswith(".css"):
+                self.send_response(200, "OK", "text/css", f.read())
+        
+        
+        
+    def send_response(self, status_code, status_msg, content_type="text/plain", content=b""):
+        response = f"HTTP/1.1 {status_code} {status_msg}\r\n"
+        response += f"Content-Type: {content_type}\r\n"
+        response += f"Content-Length: {len(content)}\r\n\r\n"
+        self.request.sendall(response.encode('utf-8') + content)
+    
+    def send_redirect(self, new_path):
+        response = f"HTTP/1.1 301 Moved Permanently\r\nLocation: {new_path}\r\n\r\n"
+        self.request.sendall(response.encode('utf-8'))    
+        
+        
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
